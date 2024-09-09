@@ -1,3 +1,4 @@
+import cv2
 import matplotlib.pyplot as plt
 import torch
 from itertools import count
@@ -18,12 +19,17 @@ memory = util.memory
 policy_net = util.policy_net
 target_net = util.target_net
 
+###
 
 if __name__ == '__main__':
+    result_video = cv2.VideoWriter('output_video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (600, 400)) # video
+
     for i_episode in tqdm(range(NUM_EPISODES)):
         state, info = env.reset()
         state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
         for t in count():
+            result_video.write(env.render()) # video
+
             action = select_action(state)
             observation, reward, terminated, truncated, _ = env.step(action.item())
             reward = torch.tensor([reward], device=device)
@@ -53,3 +59,5 @@ if __name__ == '__main__':
     plt.ioff()
     # plt.show()
     plt.savefig('result.png')
+    
+    result_video.release() # video
