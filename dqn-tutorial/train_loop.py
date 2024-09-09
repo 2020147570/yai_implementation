@@ -11,6 +11,7 @@ optimizer = util.optimizer
 policy_net = util.policy_net
 target_net = util.target_net
 
+###
 
 def optimize_model():
     if len(memory) < BATCH_SIZE:

@@ -13,8 +13,9 @@ from replay_memory import ReplayMemory
 env = init.env
 STEPS_DONE = load_hyperparameters.STEPS_DONE
 
+###
 
-def env_init():
+def __env_init():
     n_actions = env.action_space.n
     state, info = env.reset()
     n_observations = len(state)
@@ -44,4 +45,4 @@ def select_action(state):
 
 
 if __name__ == 'util':
-    policy_net, target_net, optimizer, memory = env_init()
+    policy_net, target_net, optimizer, memory = __env_init()
