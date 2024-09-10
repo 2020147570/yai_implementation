@@ -11,15 +11,12 @@ def __load_hyperparameters(config_file):
 def get_steps_done():
     return STEPS_DONE
 
-
 def get_episode_durations():
     return EPISODE_DURATIONS
-
 
 def update_episode_durations(each_episode_duration):
     global EPISODE_DURATIONS
     EPISODE_DURATIONS.append(each_episode_duration)
-
 
 def update_steps_done():
     global STEPS_DONE
