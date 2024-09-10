@@ -1,9 +1,7 @@
 import random
 from collections import deque
-
 from transition import Transition
 
-###
 
 class ReplayMemory():
     def __init__(self, capacity):

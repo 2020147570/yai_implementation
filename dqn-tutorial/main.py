@@ -1,48 +1,41 @@
 import cv2
+import init
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from itertools import count
+from env_manager import EnvManager
+from load_hyperparameters import get_episode_durations, get_steps_done, update_episode_durations, update_steps_done, LR, NUM_EPISODES, TAU
+from plot import plot_durations
+from select_action import select_action
+from train_loop import optimize_model
 from tqdm import tqdm
 
-import init # env
-import load_hyperparameters # EPISODE_DURATIONS
-import util # memory, policy_net, target_net
-from init import device
-from load_hyperparameters import NUM_EPISODES, TAU
-from plot import plot_durations
-from train_loop import optimize_model
-from util import select_action
 
-env = init.env
-EPISODE_DURATIONS = load_hyperparameters.EPISODE_DURATIONS
-memory = util.memory
-policy_net = util.policy_net
-target_net = util.target_net
-
-###
-
-if __name__ == '__main__':
-    result_video = cv2.VideoWriter('output_video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (600, 400)) # video
+def main(device, env, memory, optimizer, policy_net, target_net):
+    # video
+    frame_width, frame_height = (160, 210)
+    result_video = cv2.VideoWriter('output_video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 30, (frame_width, frame_height))
 
     for i_episode in tqdm(range(NUM_EPISODES)):
         state, info = env.reset()
-        state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+        state = torch.tensor(np.array(state, dtype=np.float32, copy=None), device=device).unsqueeze(0)
         for t in count():
-            result_video.write(env.render()) # video
+            result_video.write(cv2.resize(env.render(), (frame_width, frame_height))) # video
 
-            action = select_action(state)
-            observation, reward, terminated, truncated, _ = env.step(action.item())
+            action = select_action(env=env, state=state, policy_net=policy_net, device=device)
+            next_state, reward, terminated, truncated, info = env.step(action.item())
             reward = torch.tensor([reward], device=device)
             done = terminated or truncated
 
             if terminated:
-                next_state = state
+                next_state = None
             else:
-                next_state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+                next_state = torch.tensor(np.array(next_state, dtype=np.float32, copy=None), device=device).unsqueeze(0)
             
             memory.push(state, action, next_state, reward)
             state = next_state
-            optimize_model()
+            optimize_model(memory=memory, optimizer=optimizer, policy_net=policy_net, target_net=target_net, device=device)
 
             target_net_state_dict = target_net.state_dict()
             policy_net_state_dict = policy_net.state_dict()
@@ -51,7 +44,7 @@ if __name__ == '__main__':
             target_net.load_state_dict(target_net_state_dict)
 
             if done:
-                EPISODE_DURATIONS.append(t + 1)
+                update_episode_durations(t + 1)
                 plot_durations()
                 break
     
@@ -61,3 +54,15 @@ if __name__ == '__main__':
     plt.savefig('result.png')
     
     result_video.release() # video
+
+
+if __name__ == '__main__':
+    env_manager = EnvManager(env=init.env, lr=LR, device=init.device)
+    main(
+        device=env_manager.device,
+        env=env_manager.env,
+        memory=env_manager.memory,
+        optimizer=env_manager.optimizer,
+        policy_net=env_manager.policy_net,
+        target_net=env_manager.target_net
+        )

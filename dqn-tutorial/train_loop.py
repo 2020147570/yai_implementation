@@ -1,19 +1,11 @@
 import torch
 import torch.nn as nn
-
-import util # memory, optimizer, policy_net, target_net
-from init import device
+import torch.nn.functional as F
 from load_hyperparameters import BATCH_SIZE, GAMMA
-from replay_memory import Transition
+from transition import Transition
 
-memory = util.memory
-optimizer = util.optimizer
-policy_net = util.policy_net
-target_net = util.target_net
 
-###
-
-def optimize_model():
+def optimize_model(memory, optimizer, policy_net, target_net, device):
     if len(memory) < BATCH_SIZE:
         return
     transitions = memory.sample(BATCH_SIZE)
@@ -32,8 +24,7 @@ def optimize_model():
         next_state_values[non_final_mask] = target_net(non_final_next_states).max(1).values
     expected_state_action_values = (next_state_values * GAMMA) + reward_batch
 
-    criterion = nn.SmoothL1Loss()
-    loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+    loss = F.mse_loss(state_action_values, expected_state_action_values.unsqueeze(1))
 
     optimizer.zero_grad()
     loss.backward()

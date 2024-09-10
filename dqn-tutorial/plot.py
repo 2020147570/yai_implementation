@@ -1,16 +1,13 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import torch
-
-import load_hyperparameters # EPISODE_DURATIONS
-
-EPISODE_DURATIONS = load_hyperparameters.EPISODE_DURATIONS
-
-###
+from load_hyperparameters import get_episode_durations
 
 def plot_durations(show_result=False):
+    episode_durations = get_episode_durations()
+
     plt.figure(1)
-    durations_t = torch.tensor(EPISODE_DURATIONS, dtype=torch.float)
+    durations_t = torch.tensor(episode_durations, dtype=torch.float)
     if show_result:
         plt.title('Result')
     else:
