@@ -8,7 +8,7 @@ from env_manager import EnvManager
 from load_hyperparameters import get_episode_durations, get_steps_done, update_episode_durations, update_steps_done, LR, NUM_EPISODES, TAU
 from plot import plot_durations
 from select_action import select_action
-from train_loop import optimize_model
+from optimize_model import optimize_model
 from tqdm import tqdm
 
 

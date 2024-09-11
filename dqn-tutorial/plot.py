@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import torch
 from load_hyperparameters import get_episode_durations
 
+
 def plot_durations(show_result=False):
     episode_durations = get_episode_durations()
 
