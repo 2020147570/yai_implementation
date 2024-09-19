@@ -15,10 +15,10 @@ class AGENT:
         self.ACTIONS = ACTIONS
         self.env = env
         HEIGHT, WIDTH = env.size()
-        self.state = [0,0]
+        self.state = [HEIGHT-1,0]
 
         if is_upload:
-            alg = alg.strip().lower().replace('-', '')
+            alg = alg.strip().replace('-', '').lower()
             if alg == 'qlearning':
                 qlearning_results = np.load('./result/qlearning.npz')
                 self.V_values = qlearning_results['V']
@@ -50,7 +50,7 @@ class AGENT:
             # if (state not in self.env.goal) and (state not in self.env.obstacles):
             #     break
         """
-        state = [HEIGHT - 1, 0]
+        state = [HEIGHT-1, 0]
         return state
 
     def policy_summary(self, epsilon):
@@ -69,10 +69,11 @@ class AGENT:
         for episode in range(TRAINING_EPOCH_NUM):
             state = self.initialize_episode()
             done = False
+            terminate = False
             timeout = False
             seq_len = 0
 
-            while not (done or timeout):
+            while not (done or terminate or timeout):
                 # Next state and action generation
                 action = self.get_action(state, epsilon)
                 movement = ACTIONS[action]
@@ -84,14 +85,16 @@ class AGENT:
 
                 max_next_Q = np.max(self.Q_values[next_x, next_y, :])
                 self.Q_values[x, y, action] += alpha * (reward + discount * max_next_Q - self.Q_values[x, y, action])
+
+                terminate = self.env.is_on_obstacle(state)
+                done = self.env.is_terminal(state)
+
                 state = next_state
                 # ************************************************
-
                 seq_len += 1
                 if (seq_len >= max_seq_len):
                     timeout = True
-                done = self.env.is_terminal(state)
-
+                    
             if episode % 10000 == 0:
                 print("Num of episodes = {:}, epsilon={:.4f}".format(episode, epsilon))
 
@@ -111,10 +114,11 @@ class AGENT:
         for episode in range(TRAINING_EPOCH_NUM):
             state = self.initialize_episode()
             done = False
+            terminate = False
             timeout = False
             seq_len = 0
 
-            while not (done or timeout):
+            while not (done or terminate or timeout):
                 # Next state and action generation
                 action = self.get_action(state, epsilon)
                 movement = ACTIONS[action]
@@ -127,6 +131,10 @@ class AGENT:
                 next_x, next_y = next_state
 
                 self.Q_values[x, y, action] += alpha * (reward + discount * self.Q_values[next_x, next_y, next_action] - self.Q_values[x, y, action])
+
+                terminate = self.env.is_on_obstacle(state)
+                done = self.env.is_terminal(state)
+
                 state = next_state
                 action = next_action
                 # ************************************************
@@ -134,7 +142,6 @@ class AGENT:
                 seq_len += 1
                 if (seq_len >= max_seq_len):
                     timeout = True
-                done = self.env.is_terminal(state)
 
             if episode % 10000 == 0:
                 print("Num of episodes = {:}, epsilon={:.4f}".format(episode, epsilon))

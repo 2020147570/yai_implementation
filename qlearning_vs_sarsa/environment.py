@@ -12,6 +12,9 @@ class grid_world:
     def is_terminal(self, state):   # Goal state
         # x, y = state
         return state in self.goal
+    
+    def is_on_obstacle(self, state):
+        return state in self.obstacles
 
     def is_out_of_boundary(self, state):
         x, y = state
@@ -20,28 +23,21 @@ class grid_world:
         else:
             return False
 
-    def is_on_obstacle(self, state):
-        if state in self.obstacles:
-            return True
-        else:
-            return False
-
     def reward(self, state, motion, next_state):
         if self.is_terminal(state):
             return 0
+        elif self.is_on_obstacle(state):
+            return -100
         else:
             return -1
 
     def interaction(self, state, motion):
-        if self.is_terminal(state):
+        if self.is_terminal(state) or self.is_on_obstacle(state):
             next_state = state
         else:
             next_state = (np.array(state) + motion).tolist()
 
         if self.is_out_of_boundary(next_state):
-            next_state = state
-
-        if self.is_on_obstacle(next_state):
             next_state = state
 
         r = self.reward(state, motion, next_state)
