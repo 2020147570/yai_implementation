@@ -1,6 +1,7 @@
 import gym
 import d4rl.gym_mujoco
 ###
+import argparse
 import imageio
 import numpy as np
 import mujoco
@@ -91,8 +92,12 @@ def main(env_id, batch_size, episodes):
     env.close()
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', dest='episodes', required=True)
+    args, _ = parser.parse_known_args()
+
     main(
         env_id="halfcheetah-medium-v2",
         batch_size=256,
-        episodes=1
+        episodes=int(args.episodes)
     )
