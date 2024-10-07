@@ -12,6 +12,7 @@ class CQLAgent:
                     gamma=0.99,
                     tau=0.005,
                     alpha=0.2,
+                    cql_alpha=5.0,
                     lr=3e-4,
                     buffer_dim=1e6,
                     device='cpu'
@@ -25,6 +26,7 @@ class CQLAgent:
         self.gamma = gamma
         self.tau = tau
         self.alpha = alpha
+        self.cql_alpha = cql_alpha
         self.lr = lr
 
         # Actor network
@@ -57,7 +59,7 @@ class CQLAgent:
     def update(self, experiences):
         states, actions, rewards, next_states, dones = experiences
 
-        # Update actor network
+        # 1. Update actor network
         new_actions, log_probs = self.actor.sample(states)
         new_q1 = self.critic1(states, new_actions)
         new_q2 = self.critic2(states, new_actions)
@@ -69,7 +71,7 @@ class CQLAgent:
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        # Update critic networks
+        # 2. Update critic networks (standard Q-learning loss)
         with torch.no_grad():
             next_actions, log_probs = self.actor.sample(next_states)
             next_q1 = self.critic1_target(next_states, next_actions)
@@ -82,20 +84,44 @@ class CQLAgent:
 
         critic1_loss = F.mse_loss(q1, target_q)
         critic2_loss = F.mse_loss(q2, target_q)
+
+        # 3. CQL loss term
+        num_cql_samples = 10
         
+        states_expanded = states.unsqueeze(1).repeat(1, num_cql_samples, 1).view(-1, self.state_dim)
+
+        sampled_actions = self.actor.sample(states_expanded)[0]
+
+        q1_samples = self.critic1(states_expanded, sampled_actions).view(states.size(0), num_cql_samples)
+        q2_samples = self.critic2(states_expanded, sampled_actions).view(states.size(0), num_cql_samples)
+
+        logsumexp_q1 = torch.logsumexp(q1_samples, dim=1)
+        logsumexp_q2 = torch.logsumexp(q2_samples, dim=1)
+
+        q1_data = self.critic1(states, actions).view(-1)
+        q2_data = self.critic2(states, actions).view(-1)
+
+        cql_loss_q1 = (logsumexp_q1 - q1_data).mean()
+        cql_loss_q2 = (logsumexp_q2 - q2_data).mean()
+
+        total_critic1_loss = critic1_loss + self.cql_alpha * cql_loss_q1
+        total_critic2_loss = critic2_loss + self.cql_alpha * cql_loss_q2
+
+        # Update critic1
         self.critic1_optimizer.zero_grad()
         critic1_loss.backward()
         self.critic1_optimizer.step()
 
+        # Update critic2
         self.critic2_optimizer.zero_grad()
         critic2_loss.backward()
         self.critic2_optimizer.step()
 
-        # Update target networks
+        # 4. Update target networks
         self.soft_update(self.critic1, self.critic1_target)
         self.soft_update(self.critic2, self.critic2_target)
 
-        return actor_loss.item(), critic1_loss.item(), critic2_loss.item()
+        return actor_loss.item(), total_critic1_loss.item(), total_critic2_loss.item()
     
     def soft_update(self, local_net, target_net):
         for target_param, local_param in zip(target_net.parameters(), local_net.parameters()):
